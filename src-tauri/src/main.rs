@@ -7,19 +7,25 @@ fn main() {
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
 
-            // macOS: set transparent background + mouse passthrough for empty areas
+            // macOS: retain cursor events for pet interaction
             #[cfg(target_os = "macos")]
             {
-                use tauri::LogicalSize;
-                window.set_size(LogicalSize::new(300.0, 300.0)).ok();
                 window.set_ignore_cursor_events(false).ok();
             }
 
-            // Windows: layered window transparency
+            // Windows: retain cursor events
             #[cfg(target_os = "windows")]
             {
                 window.set_ignore_cursor_events(false).ok();
             }
+
+            // Close window to tray instead of quitting
+            let win = window.clone();
+            window.on_window_event(move |event| {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    win.hide().ok();
+                }
+            });
 
             Ok(())
         })
