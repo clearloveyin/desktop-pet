@@ -44,6 +44,7 @@
 </head>
 <body>
   <canvas id="pet-canvas"></canvas>
+  <div id="text-diag" style="position:absolute;top:10px;left:10px;color:#0f0;font-size:12px;z-index:200;pointer-events:none;"></div>
   <div id="speech-bubble"></div>
   <div id="context-menu">
     <div class="item" data-action="feed">喂食</div>
@@ -53,6 +54,24 @@
     <div class="divider"></div>
     <div class="item" data-action="exit">退出</div>
   </div>
+  <script>
+    // 内联诊断脚本
+    const diag = document.getElementById('text-diag');
+    diag.textContent = 'JS loaded';
+
+    const c = document.getElementById('pet-canvas');
+    c.width = window.innerWidth;
+    c.height = window.innerHeight;
+    diag.textContent += ' | canvas: ' + c.width + 'x' + c.height;
+
+    const ctx = c.getContext('2d');
+    // 画大红圈
+    ctx.fillStyle = '#ff3333';
+    ctx.beginPath();
+    ctx.arc(c.width / 2, c.height / 2, 50, 0, Math.PI * 2);
+    ctx.fill();
+    diag.textContent += ' | circle drawn';
+  </script>
   <script type="module" src="src/main.ts"></script>
 </body>
 </html>
