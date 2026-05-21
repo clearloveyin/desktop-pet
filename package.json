@@ -1,0 +1,16 @@
+{
+  "name": "desktop-pet",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npx tauri dev",
+    "build": "npx tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0"
+  }
+}
