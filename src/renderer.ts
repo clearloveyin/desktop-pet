@@ -34,6 +34,12 @@ export class Renderer {
 
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+    // Diagnostic: bright circle to confirm render loop runs
+    this.ctx.fillStyle = '#ff0';
+    this.ctx.beginPath();
+    this.ctx.arc(50, 50, 20, 0, Math.PI * 2);
+    this.ctx.fill();
+
     if (this.sprite && this.spriteConfig) {
       this.renderSprite(state);
     } else {
