@@ -7,13 +7,11 @@ fn main() {
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
 
-            // macOS: retain cursor events for pet interaction
+            // Retain cursor events for pet interaction
             #[cfg(target_os = "macos")]
             {
                 window.set_ignore_cursor_events(false).ok();
             }
-
-            // Windows: retain cursor events
             #[cfg(target_os = "windows")]
             {
                 window.set_ignore_cursor_events(false).ok();

@@ -33,9 +33,6 @@ export class Renderer {
     }
 
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    // Debug: fill with visible background to verify rendering
-    this.ctx.fillStyle = 'rgba(30,30,30,0.85)';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     if (this.sprite && this.spriteConfig) {
       this.renderSprite(state);
