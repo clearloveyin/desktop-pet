@@ -20,7 +20,6 @@
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "visible": true,
-        "center": false,
         "x": 100,
         "y": 100
       }
@@ -28,6 +27,16 @@
     "trayIcon": {
       "iconPath": "icons/icon.png",
       "iconAsTemplate": true
+    },
+    "security": {
+      "capabilities": [
+        {
+          "identifier": "default",
+          "description": "Default capability",
+          "windows": ["main"],
+          "permissions": ["core:default"]
+        }
+      ]
     }
   }
 }
