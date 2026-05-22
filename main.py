@@ -18,8 +18,7 @@ class DesktopPetWindow(QWidget):
         self.setWindowTitle('罗小黑桌宠')
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint |
-            Qt.WindowType.WindowStaysOnTopHint |
-            Qt.WindowType.Tool
+            Qt.WindowType.WindowStaysOnTopHint
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self._setup_window_geometry()
