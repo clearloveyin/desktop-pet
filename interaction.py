@@ -4,8 +4,9 @@ from pet import Pet
 import math
 
 
-class Interaction:
+class Interaction(QObject):
     def __init__(self, widget: QQuickWidget, pet: Pet):
+        super().__init__(widget)
         self.widget = widget
         self.pet = pet
         self._dragging = False
