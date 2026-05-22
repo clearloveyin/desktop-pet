@@ -9,6 +9,7 @@ a = Analysis(
     binaries=[],
     datas=[
         ('resources/ui/PetPanel.qml', 'resources/ui'),
+        ('resources/sprites', 'resources/sprites'),
     ],
     hiddenimports=[
         'PyQt6.QtQml',
