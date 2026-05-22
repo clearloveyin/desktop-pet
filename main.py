@@ -22,13 +22,10 @@ class DesktopPetWindow(QWidget):
             Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setFixedSize(200, 200)
-        self.move_to_bottom_right()
+        self._setup_window_geometry()
 
-        # Pet
         self.pet = Pet(self.width(), self.height())
 
-        # QML
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         self.qml_widget = QQuickWidget()
@@ -40,28 +37,33 @@ class DesktopPetWindow(QWidget):
         self.qml_widget.setResizeMode(QQuickWidget.ResizeMode.SizeRootObjectToView)
         layout.addWidget(self.qml_widget)
 
-        # Bridge
         self.bridge = PetBridge(self.pet)
         root_context = self.qml_widget.rootContext()
         root_context.setContextProperty('petBridge', self.bridge)
 
-        # Connect bridge signals to update QML properties
         self.bridge.stateChanged.connect(self._update_qml_state)
         self.bridge.positionChanged.connect(self._update_qml_position)
         self.bridge.facingChanged.connect(self._update_qml_facing)
         self.bridge.bubbleChanged.connect(self._update_qml_bubble)
 
-        # Interaction
         self.interaction = Interaction(self.qml_widget, self.pet)
 
-        # Game loop
         self.last_time = 0
         self.timer = QTimer()
         self.timer.timeout.connect(self._game_loop)
         self.timer.start(33)
 
-        # Tray icon
         self._setup_tray()
+
+    def _setup_window_geometry(self):
+        screen = QApplication.primaryScreen()
+        if screen:
+            geometry = screen.availableGeometry()
+            w = geometry.width()
+            h = 200
+            x = geometry.left()
+            y = geometry.bottom() - h
+            self.setGeometry(x, y, w, h)
 
     def _update_qml_state(self):
         root = self.qml_widget.rootObject()
@@ -88,14 +90,6 @@ class DesktopPetWindow(QWidget):
     def _game_loop(self):
         self.pet.update(33)
         self.bridge.sync()
-
-    def move_to_bottom_right(self):
-        screen = QApplication.primaryScreen()
-        if screen:
-            geometry = screen.availableGeometry()
-            x = geometry.right() - self.width() - 20
-            y = geometry.bottom() - self.height() - 20
-            self.move(int(x), int(y))
 
     def _setup_tray(self):
         self.tray_icon = QSystemTrayIcon(self)

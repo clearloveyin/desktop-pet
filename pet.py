@@ -14,53 +14,57 @@ class Pet:
         'hang': 'hang',
     }
 
-    SPEED_WALK = 50
+    WALK_SPEED = 17.5
     SPEED_CHASE = 80
-    WALK_DURATION = (2000, 5000)
-    SLEEP_TIMEOUT = 15000
     JUMP_DURATION = 600
     HANG_DURATION = 2000
     BOUNDARY_MARGIN = 20
     CHASE_DISTANCE = 100
     CLICK_RADIUS = 50
 
+    WORK_DURATION = 30 * 60 * 1000
+    REST_DURATION = 10 * 60 * 1000
+
     def __init__(self, screen_width: int, screen_height: int):
         self.screen_width = screen_width
         self.screen_height = screen_height
         self.x = screen_width // 2
-        self.y = screen_height // 2
-        self.vx = 0.0
+        self.y = screen_height - 30
+        self.vx = self.WALK_SPEED
         self.vy = 0.0
         self.facing_right = True
-        self.state = 'idle'
+        self.state = 'walk'
         self.state_timer = 0.0
         self.state_duration = 0.0
-        self.idle_timer = 0.0
         self.speech_text = ''
         self.speech_timer = 0.0
-        self.mouse_x = 0
-        self.last_interaction_time = time.time() * 1000
+
+        self.work_timer = 0.0
+        self.rest_timer = 0.0
+        self.is_working = True
 
     def update(self, dt: float):
         self.state_timer += dt
-        self.idle_timer += dt
         self.speech_timer = max(0, self.speech_timer - dt)
 
+        if self.is_working:
+            self.work_timer += dt
+            if self.work_timer >= self.WORK_DURATION:
+                self.is_working = False
+                self.rest_timer = 0.0
+                self._set_state('sleep')
+        else:
+            self.rest_timer += dt
+            if self.rest_timer >= self.REST_DURATION:
+                self.is_working = True
+                self.work_timer = 0.0
+                self._start_walk()
+
         self.x += self.vx * (dt / 1000)
-        self.y += self.vy * (dt / 1000)
         self._clamp_position()
 
         if self.state_duration > 0 and self.state_timer >= self.state_duration:
             self._transition_from(self.state)
-
-        if self.state != 'sleep' and self.state != 'drag':
-            now = time.time() * 1000
-            if now - self.last_interaction_time > self.SLEEP_TIMEOUT:
-                self.state = 'sleep'
-                self.state_timer = 0
-                self.state_duration = 0
-                self.vx = 0
-                self.vy = 0
 
     def _clamp_position(self):
         m = self.BOUNDARY_MARGIN
@@ -72,34 +76,32 @@ class Pet:
             self.x = self.screen_width - m
             self.vx = -abs(self.vx)
             self.facing_right = False
-        if self.y < m:
-            self.y = m
-            self.vy = abs(self.vy)
-        elif self.y > self.screen_height - m:
-            self.y = self.screen_height - m
-            self.vy = -abs(self.vy)
 
     def _transition_from(self, state: str):
-        if state == 'walk':
-            self._set_state('idle', 3000 + random.random() * 3000)
-        elif state == 'jump':
-            self._set_state('idle', 2000 + random.random() * 3000)
-        elif state == 'hang':
-            self._set_state('idle', 2000)
-        elif state == 'idle':
-            r = random.random()
-            if r < 0.3:
+        if state == 'jump':
+            if self.is_working:
                 self._start_walk()
             else:
-                self._set_state('idle', 2000 + random.random() * 3000)
+                self._set_state('sleep')
+        elif state == 'hang':
+            if self.is_working:
+                self._start_walk()
+            else:
+                self._set_state('sleep')
+        elif state == 'idle':
+            if self.is_working:
+                self._start_walk()
+            else:
+                self._set_state('sleep')
 
     def _start_walk(self):
-        angle = random.random() * math.pi * 2
-        self.vx = math.cos(angle) * self.SPEED_WALK
-        self.vy = math.sin(angle) * self.SPEED_WALK
-        self.facing_right = self.vx >= 0
-        duration = random.uniform(*self.WALK_DURATION)
-        self._set_state('walk', duration)
+        if self.x > self.screen_width / 2:
+            self.vx = -self.WALK_SPEED
+            self.facing_right = False
+        else:
+            self.vx = self.WALK_SPEED
+            self.facing_right = True
+        self._set_state('walk')
 
     def _set_state(self, state: str, duration: float = 0):
         self.state = state
@@ -110,18 +112,15 @@ class Pet:
             self.vy = 0
 
     def on_click(self):
-        if self.state == 'sleep':
-            self._set_state('jump', self.JUMP_DURATION)
-            self._show_speech('！？')
-            return
         self._set_state('jump', self.JUMP_DURATION)
-        self._show_speech(random.choice(['呜？', '干嘛~', '嗯？']))
-        self.last_interaction_time = time.time() * 1000
+        if not self.is_working:
+            self._show_speech(random.choice(['！？', '干嘛~', '让我睡...']))
+        else:
+            self._show_speech(random.choice(['呜？', '干嘛~', '嗯？']))
 
     def on_double_click(self):
         self._set_state('jump', self.JUMP_DURATION)
         self._show_speech(random.choice(['主人！❤️', '嘿！']))
-        self.last_interaction_time = time.time() * 1000
 
     def on_drag_start(self):
         self.state = 'drag'
@@ -147,12 +146,14 @@ class Pet:
             self._set_state('hang', self.HANG_DURATION)
             self._show_speech(random.choice(['救命！', '好高！']))
         else:
-            self._set_state('idle', 2000)
+            if self.is_working:
+                self._start_walk()
+            else:
+                self._set_state('sleep')
 
     def on_mouse_near(self, dist: float, mouse_x: float):
-        if self.state == 'drag' or self.state == 'sleep':
+        if self.state == 'drag' or self.state == 'sleep' or not self.is_working:
             return
-        self.last_interaction_time = time.time() * 1000
         if dist < self.CHASE_DISTANCE and self.state != 'chase':
             self.state = 'chase'
             self.state_timer = 0
@@ -168,7 +169,10 @@ class Pet:
         if dist > self.CHASE_DISTANCE:
             self.vx = 0
             self.vy = 0
-            self._set_state('idle', 2000)
+            if self.is_working:
+                self._start_walk()
+            else:
+                self._set_state('sleep')
             return
         if dist > 5:
             self.vx = (dx / dist) * self.SPEED_CHASE
@@ -177,12 +181,10 @@ class Pet:
         else:
             self.vx = 0
             self.vy = 0
-            self._set_state('idle', 2000)
-
-    def wake_up(self):
-        if self.state == 'sleep':
-            self._set_state('jump', 400)
-            self._show_speech('！？')
+            if self.is_working:
+                self._start_walk()
+            else:
+                self._set_state('sleep')
 
     def resize(self, width: int, height: int):
         self.screen_width = width
