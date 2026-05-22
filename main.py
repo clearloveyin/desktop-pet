@@ -1,15 +1,16 @@
 import os
 import sys
-import math
 from PyQt6.QtCore import QTimer, Qt, QUrl
-from PyQt6.QtGui import QAction, QGuiApplication, QIcon, QPixmap
+from PyQt6.QtGui import QAction, QIcon, QPixmap
 from PyQt6.QtWidgets import QApplication, QMenu, QWidget, QVBoxLayout, QSystemTrayIcon
 from PyQt6.QtQuickWidgets import QQuickWidget
 from PyQt6.QtQml import QQmlContext
 
 from pet import Pet
 from renderer import PetBridge
-from interaction import Interaction
+
+
+WINDOW_SIZE = 120
 
 
 class DesktopPetWindow(QWidget):
@@ -21,9 +22,10 @@ class DesktopPetWindow(QWidget):
             Qt.WindowType.WindowStaysOnTopHint
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self._setup_window_geometry()
+        self.setFixedSize(WINDOW_SIZE, WINDOW_SIZE)
+        self.move_to_bottom_center()
 
-        self.pet = Pet(self.width(), self.height())
+        self.pet = Pet()
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -41,54 +43,30 @@ class DesktopPetWindow(QWidget):
         root_context.setContextProperty('petBridge', self.bridge)
 
         self.bridge.stateChanged.connect(self._update_qml_state)
-        self.bridge.positionChanged.connect(self._update_qml_position)
-        self.bridge.facingChanged.connect(self._update_qml_facing)
-        self.bridge.bubbleChanged.connect(self._update_qml_bubble)
+        self.bridge.clickRequested.connect(self.pet.on_click)
 
-        self.interaction = Interaction(self.qml_widget, self.pet)
-
-        self.last_time = 0
         self.timer = QTimer()
         self.timer.timeout.connect(self._game_loop)
         self.timer.start(33)
 
         self._setup_tray()
 
-    def _setup_window_geometry(self):
-        screen = QApplication.primaryScreen()
-        if screen:
-            geometry = screen.availableGeometry()
-            w = geometry.width()
-            h = 200
-            x = geometry.left()
-            y = geometry.bottom() - h
-            self.setGeometry(x, y, w, h)
-
     def _update_qml_state(self):
         root = self.qml_widget.rootObject()
         if root:
             root.setProperty('petState', self.pet.state)
 
-    def _update_qml_position(self):
-        root = self.qml_widget.rootObject()
-        if root:
-            root.setProperty('petX', self.pet.x)
-            root.setProperty('petY', self.pet.y)
-
-    def _update_qml_facing(self):
-        root = self.qml_widget.rootObject()
-        if root:
-            root.setProperty('facingRight', self.pet.facing_right)
-
-    def _update_qml_bubble(self):
-        root = self.qml_widget.rootObject()
-        if root:
-            root.setProperty('bubbleText', self.bridge.bubbleText)
-            root.setProperty('bubbleVisible', self.bridge.bubbleVisible)
-
     def _game_loop(self):
         self.pet.update(33)
         self.bridge.sync()
+
+    def move_to_bottom_center(self):
+        screen = QApplication.primaryScreen()
+        if screen:
+            geometry = screen.availableGeometry()
+            x = geometry.left() + (geometry.width() - WINDOW_SIZE) // 2
+            y = geometry.bottom() - WINDOW_SIZE
+            self.move(x, y)
 
     def _setup_tray(self):
         self.tray_icon = QSystemTrayIcon(self)
