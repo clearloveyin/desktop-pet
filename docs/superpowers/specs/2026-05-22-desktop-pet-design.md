@@ -8,7 +8,7 @@
 
 | 层 | 技术 |
 |----|------|
-| 语言 | Python 3.11+ |
+| 语言 | Python 3.10+ |
 | GUI 框架 | PyQt6 |
 | 渲染引擎 | QML Canvas API |
 | 事件系统 | Qt 鼠标事件 (hover/click/drag) |

@@ -1,3 +1,4 @@
+import os
 import sys
 import math
 from PyQt6.QtCore import QTimer, Qt, QUrl
@@ -33,7 +34,9 @@ class DesktopPetWindow(QWidget):
         self.qml_widget = QQuickWidget()
         self.qml_widget.setClearColor(Qt.GlobalColor.transparent)
         self.qml_widget.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.qml_widget.setSource(QUrl.fromLocalFile('resources/ui/PetPanel.qml'))
+        base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+        qml_path = os.path.join(base_path, 'resources/ui/PetPanel.qml')
+        self.qml_widget.setSource(QUrl.fromLocalFile(qml_path))
         self.qml_widget.setResizeMode(QQuickWidget.ResizeMode.SizeRootObjectToView)
         layout.addWidget(self.qml_widget)
 
