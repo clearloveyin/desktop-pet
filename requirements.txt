@@ -1,2 +1,4 @@
 PyQt6==6.7.0
 pyinstaller==6.10.0
+openai>=1.0.0
+PyMuPDF>=1.23.0
