@@ -78,31 +78,42 @@ class ChatWindow(QWidget):
         self._scroll.setWidget(self._scroll_widget)
         layout.addWidget(self._scroll, 1)
 
+        # 创建输入容器
         input_container = QWidget()
         input_container.setObjectName('InputContainer')
         input_layout = QHBoxLayout(input_container)
-        input_layout.setContentsMargins(8, 8, 8, 8)
-        input_layout.setSpacing(6)
+        input_layout.setContentsMargins(8, 8, 8, 8)  # 四周边距
+        input_layout.setSpacing(0)
 
         self._input = QTextEdit()
         self._input.setObjectName('ChatInput')
-        self._input.setMaximumHeight(80)
         self._input.setPlaceholderText('输入消息...')
         self._input.setAcceptRichText(False)
+        # 输入框占据所有可用水平空间
         input_layout.addWidget(self._input, 1)
+
+        # 创建按钮容器
+        button_container = QWidget()
+        button_container.setObjectName('ButtonContainer')
+        button_layout = QHBoxLayout(button_container)
+        button_layout.setContentsMargins(0, 0, 0, 0)  # 无边距
+        button_layout.setSpacing(8)  # 按钮间距
 
         self._file_btn = QPushButton('📎')
         self._file_btn.setObjectName('FileBtn')
         self._file_btn.setFixedSize(36, 36)
         self._file_btn.clicked.connect(self._on_upload_file)
-        input_layout.addWidget(self._file_btn)
+        button_layout.addWidget(self._file_btn)
 
-        self._send_btn = QPushButton('发送')
+        self._send_btn = QPushButton('➡️')
         self._send_btn.setObjectName('SendBtn')
-        self._send_btn.setFixedHeight(36)
+        self._send_btn.setFixedSize(32, 32)  # 稍小一点
         self._send_btn.clicked.connect(self._on_send)
-        input_layout.addWidget(self._send_btn)
+        button_layout.addWidget(self._send_btn)
 
+        # 将按钮容器添加到输入容器
+        input_layout.addWidget(button_container)
+        
         layout.addWidget(input_container)
 
     def _update_bubble_height(self, bubble):

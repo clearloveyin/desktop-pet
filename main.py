@@ -4,6 +4,11 @@ from PyQt6.QtCore import QTimer, Qt, QUrl
 from PyQt6.QtGui import QAction, QIcon, QPixmap, QCursor
 from PyQt6.QtWidgets import QApplication, QMenu, QWidget, QVBoxLayout, QSystemTrayIcon
 from PyQt6.QtQuickWidgets import QQuickWidget
+from PyQt6.QtQuick import QQuickWindow
+
+# Set scene graph backend to software to fix macOS transparency bug
+# This must be done before creating any QQuickWindow or QQuickWidget instances
+QQuickWindow.setSceneGraphBackend("software")
 
 from pet import Pet
 from renderer import PetBridge
@@ -48,7 +53,9 @@ class DesktopPetWindow(QWidget):
         # KNOWN ISSUE: macOS Metal renderer doesn't clear the transparent window
         # buffer between frames, causing persistent outline of first rendered
         # image. See docs/macos-transparency-bug.md for details.
+        # FIX: Using software rendering (set globally above) to avoid the macOS Metal renderer bug
         self.qml_widget.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        # Set up context properties for QML
         root_context = self.qml_widget.rootContext()
         root_context.setContextProperty('petBridge', self.bridge)
         gif_url = QUrl.fromLocalFile(sprite_dir + '/').toString()
@@ -65,6 +72,9 @@ class DesktopPetWindow(QWidget):
         self.bridge.contextMenuRequested.connect(self._show_context_menu)
         self.bridge.filesDropped.connect(self._on_files_dropped)
         self.bridge.chatRequested.connect(self._open_chat)
+        # Connect bridge signals to directly update QML properties
+        self.bridge.thinkingChanged.connect(self._update_qml_thinking)
+        self.bridge.bubbleTextChanged.connect(self._update_qml_bubble_text)
 
         self.timer = QTimer()
         self.timer.timeout.connect(self._game_loop)
@@ -76,6 +86,16 @@ class DesktopPetWindow(QWidget):
         root = self.qml_widget.rootObject()
         if root:
             root.setProperty('petState', self.pet.state)
+
+    def _update_qml_thinking(self):
+        root = self.qml_widget.rootObject()
+        if root:
+            root.setProperty('petThinking', self.bridge.petThinking)
+
+    def _update_qml_bubble_text(self):
+        root = self.qml_widget.rootObject()
+        if root:
+            root.setProperty('bubbleText', self.bridge.bubbleText)
 
     def _game_loop(self):
         self.pet.update(33)

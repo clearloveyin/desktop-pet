@@ -7,8 +7,8 @@ Item {
     clip: true
 
     property string petState: "idle"
-    property bool petThinking: petBridge.petThinking
-    property string bubbleText: petBridge.bubbleText
+    property bool petThinking: petBridge ? petBridge.petThinking : false
+    property string bubbleText: petBridge ? petBridge.bubbleText : ""
 
     function gifForState(state) {
         switch(state) {

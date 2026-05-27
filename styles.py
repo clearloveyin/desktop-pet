@@ -41,27 +41,27 @@ QTextEdit#ChatInput:focus {
     border: 1px solid #8BC48B;
 }
 QPushButton#SendBtn {
-    background-color: #8BC48B;
-    color: white;
+    background-color: transparent;
+    color: #3E5A3E;
     border: none;
-    border-radius: 16px;
-    padding: 8px 20px;
-    font-size: 13px;
+    border-radius: 20px;
+    min-width: 32px;
+    min-height: 32px;
+    font-size: 18px;
     font-weight: bold;
-    min-width: 60px;
 }
 QPushButton#SendBtn:hover {
-    background-color: #6EAF6E;
+    background-color: #F0F0F0;
 }
 QPushButton#SendBtn:pressed {
-    background-color: #5A9E5A;
+    background-color: #E0E0E0;
 }
 QPushButton#FileBtn {
     background-color: transparent;
     border: none;
-    border-radius: 16px;
-    padding: 4px 12px;
-    font-size: 18px;
+    border-radius: 20px;
+    padding: 8px;
+    font-size: 22px;
 }
 QPushButton#FileBtn:hover {
     background-color: #E8F5E8;
