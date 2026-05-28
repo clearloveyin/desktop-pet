@@ -14,7 +14,12 @@ QWidget#ScrollContainer {
     background-color: transparent;
 }
 QWidget#InputContainer {
-    background-color: #F5FAF5;
+    background-color: #FFFFFF;
+    border: 1px solid #D0E0D0;
+    border-radius: 16px;
+}
+QWidget#InputBottomRow {
+    background-color: transparent;
 }
 QFrame#UserBubble {
     background-color: #D4E9D6;
@@ -30,24 +35,20 @@ QFrame#AiBubble {
     color: #3E5A3E;
 }
 QTextEdit#ChatInput {
-    background-color: #FFFFFF;
-    border: 1px solid #D0E0D0;
-    border-radius: 20px;
-    padding: 8px 16px;
+    background-color: transparent;
+    border: none;
     font-size: 13px;
     color: #3E5A3E;
-}
-QTextEdit#ChatInput:focus {
-    border: 1px solid #8BC48B;
+    padding: 4px 0px;
 }
 QPushButton#SendBtn {
     background-color: transparent;
     color: #3E5A3E;
     border: none;
     border-radius: 20px;
-    min-width: 32px;
-    min-height: 32px;
-    font-size: 18px;
+    min-width: 28px;
+    min-height: 28px;
+    font-size: 16px;
     font-weight: bold;
 }
 QPushButton#SendBtn:hover {
@@ -60,8 +61,8 @@ QPushButton#FileBtn {
     background-color: transparent;
     border: none;
     border-radius: 20px;
-    padding: 8px;
-    font-size: 22px;
+    padding: 4px;
+    font-size: 20px;
 }
 QPushButton#FileBtn:hover {
     background-color: #E8F5E8;

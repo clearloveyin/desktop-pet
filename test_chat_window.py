@@ -2,8 +2,8 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(__file__))
 
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import Qt
+from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import Qt
 
 app = QApplication(sys.argv)
 

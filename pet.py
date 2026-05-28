@@ -1,6 +1,3 @@
-import random
-
-
 class Pet:
     STATE_CYCLE = ['idle', 'walk', 'angry']
     STATE_DURATION = 10 * 60 * 1000

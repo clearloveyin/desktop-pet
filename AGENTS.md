@@ -7,18 +7,20 @@
 - Update planning skill: `npx skills update planning-with-files`
 
 ## 🔧 Development Notes
-- **Entry point**: `main.py` → `DesktopPetWindow` (120x120 frameless window)
+- **Entry point**: `main.py` → `DesktopPetWindow` (120x120 frameless QWidget)
 - **Pet states**: idle ↔ walk → angry (10 min timer or click cycles)
 - **File drop**: Triggers thinking animation → auto-opens chat for analysis
 - **Right-click menu**: 聊天 / API 配置 / 退出
 - **Chat window**: Streaming responses, bubble height auto-adjusts via QFontMetrics
 - **Settings**: Stored in `~/Library/Application Support/罗小黑桌宠/settings.json`
-- **MacOS transparency bug**: First-frame outline persists (see docs/macos-transparency-bug.md)
+- **Rendering**: SpritePlayer (QOpenGLWidget + PNG sprite sequences), pet thinking vs state frames auto-swapped
 
 ## 📦 Build Specifics
-- Hidden imports in build.spec: `openai`, `httpx`, `fitz` (PyMuPDF)
-- Resources bundled: `resources/ui/PetPanel.qml`, `resources/sprites/`
-- Single file output: `dist/罗小黑桌宠.app`
+- Framework: PySide6 (not PyQt6)
+- Hidden imports: `openai`, `httpx`, `fitz` (PyMuPDF)
+- Resources bundled: `resources/sprites/`
+- No QML dependency
+- **Sprite directory structure**: `resources/sprites/{state}.png/` directories, each containing numbered PNG frame files
 
 ## 🧪 Testing
 - Unit tests: `test_*.py` (run individually or together)

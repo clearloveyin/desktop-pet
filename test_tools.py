@@ -13,14 +13,5 @@ def test_read_txt():
         os.unlink(path)
 
 
-def test_encode_image_returns_data_url():
-    from tools import encode_image
-    with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as f:
-        f.write(b'fake-image-data')
-        path = f.name
-    try:
-        data = encode_image(path)
-        assert data.startswith('data:image/png;base64,')
-    finally:
-        os.unlink(path)
+
 

@@ -1,13 +1,13 @@
 import os
 import threading
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QFont, QFontMetrics
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QFont, QFontMetrics
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QScrollArea,
     QTextEdit, QPushButton, QLabel, QFrame, QFileDialog,
 )
 from ai_client import AiClient
-from tools import read_document, encode_image
+from tools import read_document
 from styles import CHAT_WINDOW_STYLE
 
 MAX_BUBBLE_WIDTH = 400
@@ -31,6 +31,9 @@ class MessageBubble(QFrame):
 
 
 class ChatWindow(QWidget):
+    _update_requested = Signal()
+    _done_requested = Signal()
+
     def __init__(self, ai_client=None):
         super().__init__()
         self.setObjectName('ChatWindow')
@@ -43,6 +46,8 @@ class ChatWindow(QWidget):
         self.resize(480, 600)
         self._setup_ui()
         self.setStyleSheet(CHAT_WINDOW_STYLE)
+        self._update_requested.connect(self._update_stream)
+        self._done_requested.connect(self._on_stream_done)
 
     def set_ai_client(self, client):
         self._ai_client = client
@@ -78,42 +83,42 @@ class ChatWindow(QWidget):
         self._scroll.setWidget(self._scroll_widget)
         layout.addWidget(self._scroll, 1)
 
-        # 创建输入容器
+        # 创建输入容器 (视觉上作为输入框)
         input_container = QWidget()
         input_container.setObjectName('InputContainer')
-        input_layout = QHBoxLayout(input_container)
-        input_layout.setContentsMargins(8, 8, 8, 8)  # 四周边距
+        input_layout = QVBoxLayout(input_container)
+        input_layout.setContentsMargins(12, 6, 12, 4)
         input_layout.setSpacing(0)
 
         self._input = QTextEdit()
         self._input.setObjectName('ChatInput')
         self._input.setPlaceholderText('输入消息...')
         self._input.setAcceptRichText(False)
-        # 输入框占据所有可用水平空间
-        input_layout.addWidget(self._input, 1)
+        self._input.setMaximumHeight(48)
+        input_layout.addWidget(self._input)
 
-        # 创建按钮容器
-        button_container = QWidget()
-        button_container.setObjectName('ButtonContainer')
-        button_layout = QHBoxLayout(button_container)
-        button_layout.setContentsMargins(0, 0, 0, 0)  # 无边距
-        button_layout.setSpacing(8)  # 按钮间距
+        # 底部按钮行 (在输入框内部右下角)
+        bottom_row = QWidget()
+        bottom_row.setObjectName('InputBottomRow')
+        bottom_layout = QHBoxLayout(bottom_row)
+        bottom_layout.setContentsMargins(0, 0, 0, 0)
+        bottom_layout.setSpacing(6)
+
+        bottom_layout.addStretch()
 
         self._file_btn = QPushButton('📎')
         self._file_btn.setObjectName('FileBtn')
-        self._file_btn.setFixedSize(36, 36)
+        self._file_btn.setFixedSize(32, 32)
         self._file_btn.clicked.connect(self._on_upload_file)
-        button_layout.addWidget(self._file_btn)
+        bottom_layout.addWidget(self._file_btn)
 
         self._send_btn = QPushButton('➡️')
         self._send_btn.setObjectName('SendBtn')
-        self._send_btn.setFixedSize(32, 32)  # 稍小一点
+        self._send_btn.setFixedSize(28, 28)
         self._send_btn.clicked.connect(self._on_send)
-        button_layout.addWidget(self._send_btn)
+        bottom_layout.addWidget(self._send_btn)
 
-        # 将按钮容器添加到输入容器
-        input_layout.addWidget(button_container)
-        
+        input_layout.addWidget(bottom_row)
         layout.addWidget(input_container)
 
     def _update_bubble_height(self, bubble):
@@ -171,17 +176,17 @@ class ChatWindow(QWidget):
             try:
                 for chunk in self._ai_client.stream_chat(self._messages):
                     self._stream_buffer += chunk
-                    QTimer.singleShot(0, self._update_stream)
+                    self._update_requested.emit()
             except Exception as e:
                 self._stream_buffer = f'[Error] {e}'
-                QTimer.singleShot(0, self._update_stream)
-            QTimer.singleShot(0, self._on_stream_done)
+                self._update_requested.emit()
+            self._done_requested.emit()
 
         t = threading.Thread(target=stream, daemon=True)
         t.start()
 
     def _on_stream_done(self):
-        pass
+        self._messages.append({'role': 'assistant', 'content': self._stream_buffer})
 
     def _update_stream(self):
         if self._current_bubble:
@@ -197,13 +202,9 @@ class ChatWindow(QWidget):
             return
         ext = os.path.splitext(path)[1].lower()
         if ext in ('.png', '.jpg', '.jpeg', '.gif', '.webp'):
-            data_url = encode_image(path)
-            content = [{'type': 'text', 'text': '分析这张图片'},
-                       {'type': 'image_url',
-                        'image_url': {'url': data_url}}]
-            self._messages.append({'role': 'user', 'content': content})
-            self.add_message(f'[图片] {os.path.basename(path)}', is_user=True)
-            self._send_message('分析这张图片')
+            self.add_message(
+                f'[图片] {os.path.basename(path)}（当前模型不支持图片分析）',
+                is_user=True)
         else:
             text = read_document(path)
             preview = text[:2000]
@@ -217,13 +218,9 @@ class ChatWindow(QWidget):
         for path in paths:
             ext = os.path.splitext(path)[1].lower()
             if ext in ('.png', '.jpg', '.jpeg', '.gif', '.webp'):
-                data_url = encode_image(path)
-                content = [{'type': 'text', 'text': '分析这张图片'},
-                           {'type': 'image_url',
-                            'image_url': {'url': data_url}}]
-                self._messages.append({'role': 'user', 'content': content})
-                self.add_message(f'[图片] {os.path.basename(path)}', is_user=True)
-                self._send_message('分析这张图片')
+                self.add_message(
+                    f'[图片] {os.path.basename(path)}（当前模型不支持图片分析）',
+                    is_user=True)
             else:
                 text = read_document(path)
                 preview = text[:2000]

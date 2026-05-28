@@ -1,16 +1,13 @@
 import os
 import sys
-from PyQt6.QtCore import QTimer, Qt, QUrl
-from PyQt6.QtGui import QAction, QIcon, QPixmap, QCursor
-from PyQt6.QtWidgets import QApplication, QMenu, QWidget, QVBoxLayout, QSystemTrayIcon
-from PyQt6.QtQuickWidgets import QQuickWidget
-from PyQt6.QtQuick import QQuickWindow
-
-# Set scene graph backend to software to fix macOS transparency bug
-# This must be done before creating any QQuickWindow or QQuickWidget instances
-QQuickWindow.setSceneGraphBackend("software")
+from PySide6.QtCore import QTimer, Qt
+from PySide6.QtGui import QAction, QIcon, QPixmap, QCursor, QPainter
+from PySide6.QtWidgets import (
+    QApplication, QMenu, QWidget, QSystemTrayIcon, QLabel
+)
 
 from pet import Pet
+from sprite_player import SpritePlayer
 from renderer import PetBridge
 from settings import load as load_settings
 from ai_client import AiClient
@@ -37,44 +34,39 @@ class DesktopPetWindow(QWidget):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setFixedSize(WINDOW_SIZE, WINDOW_SIZE)
+        self.setAcceptDrops(True)
         self.move_to_bottom_center()
 
         self.pet = Pet()
         self._settings = load_settings()
         self._ai_client = AiClient(self._settings)
         self._chat_window = ChatWindow(self._ai_client)
-        sprite_dir = _get_sprite_dir()
+        self._sprite_dir = _get_sprite_dir()
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        self.bridge = PetBridge(self.pet)
-        self.qml_widget = QQuickWidget()
-        self.qml_widget.setClearColor(Qt.GlobalColor.transparent)
-        # KNOWN ISSUE: macOS Metal renderer doesn't clear the transparent window
-        # buffer between frames, causing persistent outline of first rendered
-        # image. See docs/macos-transparency-bug.md for details.
-        # FIX: Using software rendering (set globally above) to avoid the macOS Metal renderer bug
-        self.qml_widget.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        # Set up context properties for QML
-        root_context = self.qml_widget.rootContext()
-        root_context.setContextProperty('petBridge', self.bridge)
-        gif_url = QUrl.fromLocalFile(sprite_dir + '/').toString()
-        root_context.setContextProperty('gifBaseUrl', gif_url)
-        base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
-        qml_path = os.path.join(base_path, 'resources/ui/PetPanel.qml')
-        self.qml_widget.setSource(QUrl.fromLocalFile(qml_path))
-        self.qml_widget.setResizeMode(QQuickWidget.ResizeMode.SizeRootObjectToView)
-        layout.addWidget(self.qml_widget)
+        self._bridge = PetBridge()
+        self._bridge.thinkingChanged.connect(self._update_sprite)
+        self._bridge.bubbleTextChanged.connect(self._update_bubble)
 
-        self.bridge.stateChanged.connect(self._update_qml_state)
-        self.bridge.clickRequested.connect(self.pet.on_click)
-        self.bridge.dragMoveRequested.connect(self._on_drag_move)
-        self.bridge.contextMenuRequested.connect(self._show_context_menu)
-        self.bridge.filesDropped.connect(self._on_files_dropped)
-        self.bridge.chatRequested.connect(self._open_chat)
-        # Connect bridge signals to directly update QML properties
-        self.bridge.thinkingChanged.connect(self._update_qml_thinking)
-        self.bridge.bubbleTextChanged.connect(self._update_qml_bubble_text)
+        self._current_sprite = ''
+        self._pet_widget = SpritePlayer(self)
+        self._pet_widget.frameChanged.connect(self.update)
+
+        self._bubble_label = QLabel(self)
+        self._bubble_label.setWordWrap(True)
+        self._bubble_label.hide()
+        self._bubble_label.setStyleSheet("""
+            background-color: white;
+            border: 1px solid #cccccc;
+            border-radius: 8px;
+            padding: 4px 8px;
+            font-size: 12px;
+            color: #333333;
+        """)
+
+        self._drag_start = None
+        self._was_dragged = False
+
+        self._update_sprite()
 
         self.timer = QTimer()
         self.timer.timeout.connect(self._game_loop)
@@ -82,27 +74,88 @@ class DesktopPetWindow(QWidget):
 
         self._setup_tray()
 
-    def _update_qml_state(self):
-        root = self.qml_widget.rootObject()
-        if root:
-            root.setProperty('petState', self.pet.state)
+    def _sprite_path(self):
+        if self._bridge.petThinking:
+            return os.path.join(self._sprite_dir, '思考.png')
+        state = self.pet.state
+        mapping = {'idle': '待机.png', 'walk': '奔跑.png', 'angry': '疲惫.png'}
+        return os.path.join(self._sprite_dir, mapping.get(state, '待机.png'))
 
-    def _update_qml_thinking(self):
-        root = self.qml_widget.rootObject()
-        if root:
-            root.setProperty('petThinking', self.bridge.petThinking)
+    def _update_sprite(self):
+        path = self._sprite_path()
+        if path != self._current_sprite:
+            self._current_sprite = path
+            self._pet_widget.load(path, fps=12)
 
-    def _update_qml_bubble_text(self):
-        root = self.qml_widget.rootObject()
-        if root:
-            root.setProperty('bubbleText', self.bridge.bubbleText)
+    def _update_bubble(self):
+        text = self._bridge.bubbleText
+        if text:
+            self._bubble_label.setText(text)
+            self._bubble_label.adjustSize()
+            x = (WINDOW_SIZE - self._bubble_label.width()) // 2
+            y = 2
+            self._bubble_label.move(x, y)
+            self._bubble_label.show()
+        else:
+            self._bubble_label.hide()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setCompositionMode(
+            QPainter.CompositionMode.CompositionMode_Clear)
+        painter.fillRect(self.rect(), Qt.GlobalColor.transparent)
+        painter.setCompositionMode(
+            QPainter.CompositionMode.CompositionMode_SourceOver)
+        pixmap = self._pet_widget.current_pixmap()
+        if not pixmap.isNull():
+            x = (self.width() - pixmap.width()) // 2
+            y = (self.height() - pixmap.height()) // 2
+            painter.drawPixmap(x, y, pixmap)
+        painter.end()
 
     def _game_loop(self):
         self.pet.update(33)
-        self.bridge.sync()
+        self._update_sprite()
 
-    def _on_drag_move(self, dx, dy):
-        self.move(self.x() + dx, self.y() + dy)
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._drag_start = event.position().toPoint()
+            self._was_dragged = False
+
+    def mouseMoveEvent(self, event):
+        if self._drag_start and event.buttons() & Qt.MouseButton.LeftButton:
+            delta = event.position().toPoint() - self._drag_start
+            if delta.manhattanLength() > 5:
+                self._was_dragged = True
+                self.move(self.pos() + delta)
+            self._drag_start = event.position().toPoint()
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton and self._drag_start is not None:
+            if not self._was_dragged:
+                self.pet.on_click()
+            self._drag_start = None
+
+    def contextMenuEvent(self, event):
+        self._show_context_menu()
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+            self._bridge.petThinking = True
+            self._bridge.bubbleText = "给我的？"
+
+    def dragLeaveEvent(self, event):
+        self._bridge.petThinking = False
+        self._bridge.bubbleText = ""
+
+    def dropEvent(self, event):
+        if event.mimeData().hasUrls():
+            paths = [url.toLocalFile() for url in event.mimeData().urls()]
+            self._bridge.petThinking = False
+            self._bridge.bubbleText = ""
+            self._on_files_dropped(paths)
+            event.acceptProposedAction()
 
     def _show_context_menu(self):
         menu = QMenu(self)
@@ -158,7 +211,6 @@ def main():
     app.setApplicationName('罗小黑桌宠')
     window = DesktopPetWindow()
     window.show()
-    QTimer.singleShot(100, lambda: window.qml_widget.quickWindow().setColor(Qt.GlobalColor.transparent))
     sys.exit(app.exec())
 
 

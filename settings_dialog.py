@@ -1,6 +1,6 @@
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QFormLayout, QLineEdit,
-    QPushButton, QDialogButtonBox, QMessageBox,
+    QDialogButtonBox, QMessageBox,
 )
 from settings import load, save
 
