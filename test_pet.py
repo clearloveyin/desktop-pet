@@ -19,18 +19,30 @@ def test_state_cycle_order():
 
 def test_timer_advances_state():
     p = Pet()
-    p.state_timer = p.STATE_DURATION - 100
+    p._state_timer = p.STATE_DURATION - 100
     p.update(200)
     assert p.state == 'walk'
-    assert p.state_timer == 0.0
+    assert p._state_timer == 0.0
 
 
 def test_timer_multiple_cycles():
     p = Pet()
     for _ in range(6):
-        p.state_timer = p.STATE_DURATION - 100
+        p._state_timer = p.STATE_DURATION - 100
         p.update(200)
     assert p.state == 'idle'
+
+
+def test_state_changed_signal():
+    received = []
+    p = Pet()
+    p.stateChanged.connect(received.append)
+    p.on_click()
+    assert received == ['walk']
+    p.on_click()
+    assert received == ['walk', 'angry']
+    p.on_click()
+    assert received == ['walk', 'angry', 'idle']
 
 
 if __name__ == '__main__':
@@ -38,4 +50,5 @@ if __name__ == '__main__':
     test_state_cycle_order()
     test_timer_advances_state()
     test_timer_multiple_cycles()
+    test_state_changed_signal()
     print('All tests passed!')

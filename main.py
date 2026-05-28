@@ -8,8 +8,8 @@ from PySide6.QtWidgets import (
 
 from pet import Pet
 from sprite_player import SpritePlayer
-from renderer import PetBridge
-from settings import load as load_settings
+from pet_view_model import PetBridge
+from settings import Settings
 from ai_client import AiClient
 from chat_window import ChatWindow
 from settings_dialog import SettingsDialog
@@ -38,7 +38,8 @@ class DesktopPetWindow(QWidget):
         self.move_to_bottom_center()
 
         self.pet = Pet()
-        self._settings = load_settings()
+        self.pet.stateChanged.connect(self._on_pet_state_changed)
+        self._settings = Settings.load()
         self._ai_client = AiClient(self._settings)
         self._chat_window = ChatWindow(self._ai_client)
         self._sprite_dir = _get_sprite_dir()
@@ -81,6 +82,9 @@ class DesktopPetWindow(QWidget):
         mapping = {'idle': '待机.png', 'walk': '奔跑.png', 'angry': '疲惫.png'}
         return os.path.join(self._sprite_dir, mapping.get(state, '待机.png'))
 
+    def _on_pet_state_changed(self, state):
+        self._update_sprite()
+
     def _update_sprite(self):
         path = self._sprite_path()
         if path != self._current_sprite:
@@ -115,7 +119,6 @@ class DesktopPetWindow(QWidget):
 
     def _game_loop(self):
         self.pet.update(33)
-        self._update_sprite()
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:

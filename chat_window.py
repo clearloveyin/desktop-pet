@@ -194,36 +194,30 @@ class ChatWindow(QWidget):
             QTimer.singleShot(0, lambda: self._update_bubble_height(self._current_bubble))
             self._scroll_to_bottom()
 
+    def _handle_file(self, path):
+        ext = os.path.splitext(path)[1].lower()
+        basename = os.path.basename(path)
+        if ext in ('.png', '.jpg', '.jpeg', '.gif', '.webp'):
+            self.add_message(
+                f'[图片] {basename}（当前模型不支持图片分析）',
+                is_user=True)
+        else:
+            text = read_document(path)
+            preview = text[:2000]
+            context = f'以下为文件 {basename} 的内容:\n{preview}'
+            self._send_message(f'分析文件: {basename}',
+                              file_context=context)
+
     def _on_upload_file(self):
         path, _ = QFileDialog.getOpenFileName(
             self, '选择文件', '',
             'All Files (*)')
         if not path:
             return
-        ext = os.path.splitext(path)[1].lower()
-        if ext in ('.png', '.jpg', '.jpeg', '.gif', '.webp'):
-            self.add_message(
-                f'[图片] {os.path.basename(path)}（当前模型不支持图片分析）',
-                is_user=True)
-        else:
-            text = read_document(path)
-            preview = text[:2000]
-            context = f'以下为文件 {os.path.basename(path)} 的内容:\n{preview}'
-            self._send_message(f'分析文件: {os.path.basename(path)}',
-                              file_context=context)
+        self._handle_file(path)
 
     def open_with_file(self, paths: list):
         self.show()
         self.raise_()
         for path in paths:
-            ext = os.path.splitext(path)[1].lower()
-            if ext in ('.png', '.jpg', '.jpeg', '.gif', '.webp'):
-                self.add_message(
-                    f'[图片] {os.path.basename(path)}（当前模型不支持图片分析）',
-                    is_user=True)
-            else:
-                text = read_document(path)
-                preview = text[:2000]
-                context = f'以下为文件 {os.path.basename(path)} 的内容:\n{preview}'
-                self._send_message(f'分析文件: {os.path.basename(path)}',
-                                  file_context=context)
+            self._handle_file(path)
